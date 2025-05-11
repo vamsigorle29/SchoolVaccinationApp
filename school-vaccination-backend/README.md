@@ -1,212 +1,208 @@
-# School Vaccination Portal Backend
+# School Vaccination Portal
 
-A Node.js/Express backend for managing school vaccination records and drives.
+A full-stack web application for managing and tracking vaccination drives in schools. This system helps school coordinators manage student records, schedule vaccination drives, update vaccination statuses, and generate reports.
+
+## System Overview
+
+The School Vaccination Portal is built using:
+- Frontend: React.js with Material-UI
+- Backend: Node.js/Express
+- Database: MongoDB Atlas
+- Authentication: JWT-based
 
 ## Features
 
-- User authentication and authorization
-- Student record management
-- Vaccination drive scheduling and management
-- Comprehensive reporting and statistics
-- CSV bulk import for student records
-- Conflict detection for vaccination scheduling
+### 1. Authentication & Access Control
+- Secure login system for school coordinators
+- JWT-based authentication
+- Role-based access control
+- Protected routes and API endpoints
 
-## Prerequisites
+### 2. Dashboard Overview
+- Real-time metrics and insights
+- Total number of students
+- Vaccination statistics and percentages
+- Upcoming vaccination drives (next 30 days)
+- Quick navigation to key features
+- Empty state handling
 
-- Node.js (v14 or higher)
-- MongoDB (v4.4 or higher)
-- npm or yarn
+### 3. Student Management
+- Individual student record management
+- Bulk import via CSV upload
+- Search and filter capabilities
+- Vaccination status tracking
+- Duplicate vaccination prevention
 
-## Setup
+### 4. Vaccination Drive Management
+- Create and manage vaccination drives
+- Schedule validation (15-day advance notice)
+- Conflict prevention
+- Edit capabilities for future drives
+- Automatic disabling of past drives
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file in the root directory with the following variables:
-   ```
-   PORT=5000
-   MONGODB_URI=mongodb://localhost:27017/school-vaccination
-   JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-   NODE_ENV=development
-   ```
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
+## Architecture
+
+### Backend Architecture
+```
+school-vaccination-backend/
+├── src/
+│   ├── config/         # Configuration files
+│   ├── controllers/    # Route controllers
+│   ├── middleware/     # Custom middleware
+│   ├── models/         # Database models
+│   ├── routes/         # API routes
+│   ├── utils/          # Utility functions
+│   └── app.js          # Express application
+├── scripts/            # Utility scripts
+└── tests/             # Test files
+```
+
+### Frontend Architecture
+```
+school-vaccination-frontend/
+├── src/
+│   ├── components/     # Reusable components
+│   ├── pages/         # Page components
+│   ├── services/      # API services
+│   ├── utils/         # Utility functions
+│   └── App.js         # Main application
+```
 
 ## API Documentation
 
 ### Authentication
-
-#### POST /api/auth/login
-Login with username and password.
-```json
-{
-  "username": "string",
-  "password": "string"
-}
-```
-
-#### POST /api/auth/setup
-Create initial admin user (first-time setup only).
-```json
-{
-  "username": "string",
-  "password": "string"
-}
-```
+- POST /api/auth/login - User login
+- POST /api/auth/setup-admin - Initial admin setup
 
 ### Students
-
-#### GET /api/students
-Get all students with pagination and filters.
-Query parameters:
-- page (default: 1)
-- limit (default: 10)
-- search (optional)
-- class (optional)
-- vaccinationStatus (optional)
-
-#### POST /api/students
-Add a new student.
-```json
-{
-  "studentId": "string",
-  "name": "string",
-  "class": "string",
-  "dateOfBirth": "date",
-  "gender": "male|female|other",
-  "parentName": "string",
-  "contactNumber": "string"
-}
-```
-
-#### POST /api/students/bulk-import
-Bulk import students from CSV file.
-Form data:
-- file: CSV file
-
-#### PATCH /api/students/:id/vaccination
-Update student vaccination status.
-```json
-{
-  "vaccineName": "string",
-  "date": "date",
-  "driveId": "string",
-  "status": "scheduled|completed|missed"
-}
-```
+- GET /api/students - Get all students
+- POST /api/students - Add new student
+- PATCH /api/students/:id - Update student
+- POST /api/students/bulk-import - Bulk import students
 
 ### Vaccination Drives
-
-#### GET /api/drives
-Get all drives with pagination and filters.
-Query parameters:
-- page (default: 1)
-- limit (default: 10)
-- status (optional)
-- dateFrom (optional)
-- dateTo (optional)
-
-#### POST /api/drives
-Create a new vaccination drive.
-```json
-{
-  "vaccineName": "string",
-  "date": "date",
-  "availableDoses": "number",
-  "applicableClasses": ["string"],
-  "coordinator": "string",
-  "notes": "string"
-}
-```
-
-#### PATCH /api/drives/:id/status
-Update drive status.
-```json
-{
-  "status": "scheduled|in-progress|completed|cancelled"
-}
-```
-
-#### PATCH /api/drives/:id
-Update drive details.
-```json
-{
-  "vaccineName": "string",
-  "date": "date",
-  "availableDoses": "number",
-  "applicableClasses": ["string"],
-  "coordinator": "string",
-  "notes": "string"
-}
-```
+- GET /api/drives - Get all drives
+- POST /api/drives - Create new drive
+- PATCH /api/drives/:id - Update drive
+- GET /api/drives/upcoming - Get upcoming drives
 
 ### Reports
+- GET /api/reports/statistics - Get vaccination statistics
+- GET /api/reports/students - Get student vaccination report
+- GET /api/reports/drives - Get drive performance report
 
-#### GET /api/reports/statistics
-Get overall vaccination statistics.
+## Database Schema
 
-#### GET /api/reports/drives
-Get drive performance report.
-Query parameters:
-- dateFrom (optional)
-- dateTo (optional)
-
-#### GET /api/reports/students
-Get student vaccination report.
-Query parameters:
-- class (optional)
-- vaccinationStatus (optional)
-
-#### GET /api/reports/schedule
-Get upcoming vaccination schedule.
-Query parameters:
-- dateFrom (optional)
-- dateTo (optional)
-
-## Error Handling
-
-All API endpoints follow a consistent error response format:
-```json
+### Student Model
+```javascript
 {
-  "success": false,
-  "message": "Error message",
-  "errors": [] // Optional validation errors
+  studentId: String,
+  name: String,
+  class: String,
+  dateOfBirth: Date,
+  gender: String,
+  parentName: String,
+  contactNumber: String,
+  vaccinationStatus: String,
+  vaccinationHistory: [{
+    vaccineName: String,
+    date: Date,
+    doseNumber: Number,
+    driveId: String
+  }]
 }
 ```
 
-## Success Response Format
-
-All successful API responses follow this format:
-```json
+### Vaccination Drive Model
+```javascript
 {
-  "success": true,
-  "data": {} // Response data
+  vaccine: String,
+  date: Date,
+  totalDoses: Number,
+  applicableClasses: [String],
+  status: String,
+  coordinator: String
 }
 ```
 
-## Development
+## Setup Instructions
 
-- `npm run dev`: Start development server with hot reload
-- `npm start`: Start production server
-- `npm test`: Run tests
+### Prerequisites
+- Node.js (v14 or higher)
+- MongoDB Atlas account
+- npm or yarn
 
-## Security
+### Backend Setup
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   cd school-vaccination-backend
+   npm install
+   ```
+3. Create `.env` file:
+   ```
+   PORT=8080
+   MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.kyjazba.mongodb.net/school-vaccination?retryWrites=true&w=majority
+   JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+   NODE_ENV=development
+   ```
+4. Start the server:
+   ```bash
+   npm run dev
+   ```
 
+### Frontend Setup
+1. Navigate to frontend directory:
+   ```bash
+   cd school-vaccination-frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm start
+   ```
+
+## Testing
+
+### Backend Tests
+```bash
+cd school-vaccination-backend
+npm test
+```
+
+### Frontend Tests
+```bash
+cd school-vaccination-frontend
+npm test
+```
+
+## Security Features
 - JWT-based authentication
 - Password hashing with bcrypt
-- Input validation with express-validator
+- Input validation
+- CORS configuration
+- Environment variable management
 - Role-based access control
-- CORS enabled
-- Environment variable configuration
+
+## Assumptions
+1. Single school implementation
+2. One coordinator per school
+3. Vaccination drives are school-specific
+4. No real-time updates required
+5. Basic file handling for CSV imports
 
 ## Contributing
-
 1. Fork the repository
 2. Create your feature branch
 3. Commit your changes
 4. Push to the branch
-5. Create a new Pull Request 
+5. Create a Pull Request
+
+## License
+This project is licensed under the MIT License.
+
+## Contact
+For any queries, please contact the development team. 
