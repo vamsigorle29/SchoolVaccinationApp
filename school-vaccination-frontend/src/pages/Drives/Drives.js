@@ -10,12 +10,14 @@ import {
   Users,
   Syringe,
   ChevronRight,
-  Activity
+  Activity,
+  Clock
 } from "lucide-react";
 import API_ENDPOINTS from "../../config/api";
 
 const Drives = () => {
   const [drives, setDrives] = useState([]);
+  const [todaysDrives, setTodaysDrives] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -29,6 +31,7 @@ const Drives = () => {
 
   useEffect(() => {
     fetchDrives();
+    fetchTodaysDrives();
   }, []);
 
   const fetchDrives = async () => {
@@ -39,8 +42,20 @@ const Drives = () => {
     } catch (error) {
       console.error("Error fetching drives:", error);
       toast.error("Failed to fetch vaccination drives");
+      setDrives([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTodaysDrives = async () => {
+    try {
+      const response = await axios.get(API_ENDPOINTS.DRIVES.TODAY);
+      setTodaysDrives(response.data || []);
+    } catch (error) {
+      console.error("Error fetching today's drives:", error);
+      toast.error("Failed to fetch today's drives");
+      setTodaysDrives([]);
     }
   };
 
@@ -48,7 +63,7 @@ const Drives = () => {
     e.preventDefault();
     try {
       if (editingDrive) {
-        await axios.put(API_ENDPOINTS.DRIVES.UPDATE(editingDrive._id), formData);
+        await axios.patch(API_ENDPOINTS.DRIVES.UPDATE(editingDrive._id), formData);
         toast.success("Drive updated successfully");
       } else {
         await axios.post(API_ENDPOINTS.DRIVES.CREATE, formData);
@@ -57,6 +72,7 @@ const Drives = () => {
       setShowAddModal(false);
       setEditingDrive(null);
       fetchDrives();
+      fetchTodaysDrives();
       setFormData({
         vaccine: "",
         date: "",
@@ -75,6 +91,7 @@ const Drives = () => {
         await axios.delete(API_ENDPOINTS.DRIVES.DELETE(id));
         toast.success("Drive deleted successfully");
         fetchDrives();
+        fetchTodaysDrives();
       } catch (error) {
         console.error("Error deleting drive:", error);
         toast.error("Failed to delete drive");
@@ -117,7 +134,7 @@ const Drives = () => {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="glass-card p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -142,7 +159,44 @@ const Drives = () => {
             </div>
           </div>
         </div>
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Today's Drives</p>
+              <h3 className="text-2xl font-bold mt-1 text-gray-800">{todaysDrives?.length || 0}</h3>
+            </div>
+            <div className="h-12 w-12 rounded-xl bg-green-50 flex items-center justify-center">
+              <Clock className="h-6 w-6 text-green-500" />
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Today's Drives Section */}
+      {todaysDrives.length > 0 && (
+        <div className="glass-card p-6">
+          <h2 className="text-xl font-semibold mb-4">Today's Vaccination Drives</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {todaysDrives.map((drive) => (
+              <div key={drive._id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <Syringe className="h-5 w-5 text-green-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900">{drive.vaccine}</h3>
+                    <p className="text-sm text-gray-500">{drive.applicableClasses?.join(', ')}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Users className="h-4 w-4" />
+                  <span>{drive.totalDoses} doses available</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       <div className="glass-card p-6">
@@ -162,7 +216,7 @@ const Drives = () => {
         </div>
       </div>
 
-      {/* Drives Grid */}
+      {/* All Drives Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredDrives.map((drive) => (
           <div key={drive?._id} className="glass-card p-6 hover:shadow-lg transition-all duration-300">
@@ -193,21 +247,16 @@ const Drives = () => {
               <button
                 onClick={() => {
                   setEditingDrive(drive);
-                  setFormData(drive || {
-                    vaccine: "",
-                    date: "",
-                    totalDoses: "",
-                    applicableClasses: [],
-                  });
+                  setFormData(drive);
                   setShowAddModal(true);
                 }}
-                className="text-primary hover:text-primary-dark p-2"
+                className="text-primary hover:text-primary-dark"
               >
                 <Edit className="h-4 w-4" />
               </button>
               <button
-                onClick={() => handleDelete(drive?._id)}
-                className="text-red-500 hover:text-red-700 p-2"
+                onClick={() => handleDelete(drive._id)}
+                className="text-red-500 hover:text-red-700"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -229,7 +278,7 @@ const Drives = () => {
                 <input
                   type="text"
                   className="input mt-1 w-full"
-                  value={formData?.vaccine || ""}
+                  value={formData.vaccine}
                   onChange={(e) => setFormData({ ...formData, vaccine: e.target.value })}
                   required
                 />
@@ -239,7 +288,7 @@ const Drives = () => {
                 <input
                   type="date"
                   className="input mt-1 w-full"
-                  value={formData?.date ? new Date(formData.date).toISOString().split('T')[0] : ""}
+                  value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   required
                 />
@@ -249,7 +298,7 @@ const Drives = () => {
                 <input
                   type="number"
                   className="input mt-1 w-full"
-                  value={formData?.totalDoses || ""}
+                  value={formData.totalDoses}
                   onChange={(e) => setFormData({ ...formData, totalDoses: e.target.value })}
                   required
                   min="1"
@@ -258,18 +307,27 @@ const Drives = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Applicable Classes</label>
                 <select
+                  multiple
                   className="input mt-1 w-full"
-                  value={formData?.applicableClasses?.[0] || ""}
-                  onChange={(e) => setFormData({ ...formData, applicableClasses: [e.target.value] })}
+                  value={formData.applicableClasses}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    applicableClasses: Array.from(e.target.selectedOptions, option => option.value)
+                  })}
                   required
                 >
-                  <option value="">Select Class</option>
+                  <option value="1A">Class 1A</option>
+                  <option value="1B">Class 1B</option>
+                  <option value="2A">Class 2A</option>
+                  <option value="2B">Class 2B</option>
+                  <option value="3A">Class 3A</option>
+                  <option value="3B">Class 3B</option>
                   <option value="4A">Class 4A</option>
+                  <option value="4B">Class 4B</option>
                   <option value="5A">Class 5A</option>
                   <option value="5B">Class 5B</option>
-                  <option value="6A">Class 6A</option>
-                  <option value="6B">Class 6B</option>
                 </select>
+                <p className="text-sm text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple classes</p>
               </div>
               <div className="flex justify-end gap-4 mt-6">
                 <button

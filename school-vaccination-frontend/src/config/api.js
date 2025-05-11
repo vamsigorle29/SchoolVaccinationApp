@@ -6,22 +6,32 @@ export const API_ENDPOINTS = {
     REGISTER: `${API_BASE_URL}/api/auth/register`,
   },
   STUDENTS: {
-    LIST: `${API_BASE_URL}/students`,
-    CREATE: `${API_BASE_URL}/api/students/create`,
-    UPDATE: (id) => `${API_BASE_URL}/api/students/update/${id}`,
-    DELETE: (id) => `${API_BASE_URL}/api/students/delete/${id}`,
+    LIST: `${API_BASE_URL}/api/students`,
+    GET: (id) => `${API_BASE_URL}/api/students/${id}`,
+    CREATE: `${API_BASE_URL}/api/students`,
+    BULK_CREATE: `${API_BASE_URL}/api/students/bulk`,
+    UPDATE: (id) => `${API_BASE_URL}/api/students/${id}`,
+    DELETE: (id) => `${API_BASE_URL}/api/students/${id}`,
     UPLOAD: `${API_BASE_URL}/api/students/upload`,
   },
   DRIVES: {
     LIST: `${API_BASE_URL}/api/drives`,
-    CREATE: `${API_BASE_URL}/api/drives/create`,
-    UPDATE: (id) => `${API_BASE_URL}/api/drives/update/${id}`,
-    DELETE: (id) => `${API_BASE_URL}/api/drives/delete/${id}`,
+    TODAY: `${API_BASE_URL}/api/drives/today`,
+    GET: (id) => `${API_BASE_URL}/api/drives/${id}`,
+    CREATE: `${API_BASE_URL}/api/drives`,
+    UPDATE: (id) => `${API_BASE_URL}/api/drives/${id}`,
+    DELETE: (id) => `${API_BASE_URL}/api/drives/${id}`,
   },
   DASHBOARD: {
     SUMMARY: `${API_BASE_URL}/api/dashboard/summary`,
-    TODAY_DRIVES: `${API_BASE_URL}/api/dashboard/summary`,
+    GRADE_STATS: `${API_BASE_URL}/api/dashboard/grade-stats`,
   },
 };
+
+// Debug log
+console.log('API Configuration:', {
+  BASE_URL: API_BASE_URL,
+  DRIVES_LIST: API_ENDPOINTS.DRIVES.LIST
+});
 
 export default API_ENDPOINTS; 

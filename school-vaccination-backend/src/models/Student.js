@@ -68,4 +68,16 @@ studentSchema.pre('save', function(next) {
   next();
 });
 
+// Add a method to validate required fields only on creation
+studentSchema.pre('save', function(next) {
+  if (this.isNew) {
+    const requiredFields = ['studentId', 'name', 'class', 'dateOfBirth', 'gender', 'parentName', 'contactNumber'];
+    const missingFields = requiredFields.filter(field => !this[field]);
+    if (missingFields.length > 0) {
+      return next(new Error(`Missing required fields: ${missingFields.join(', ')}`));
+    }
+  }
+  next();
+});
+
 module.exports = mongoose.model('Student', studentSchema); 

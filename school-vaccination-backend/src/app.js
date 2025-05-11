@@ -2,50 +2,60 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
 
 // Import routes
-const authRoutes = require('./routes/auth');
 const studentRoutes = require('./routes/students');
 const driveRoutes = require('./routes/drives');
-const reportRoutes = require('./routes/reports');
 const dashboardRoutes = require('./routes/dashboard');
 
 const app = express();
 
+// CORS configuration
+const corsOptions = {
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Database connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/school-vaccination';
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// Connect to MongoDB
+const MONGO_URI = 'mongodb+srv://srilakshmikalaga:23101998@cluster0.kyjazba.mongodb.net/school-vaccination?retryWrites=true&w=majority&appName=Cluster0';
+
+mongoose.connect(MONGO_URI, {
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+})
+.then(() => console.log('✅ MongoDB connected successfully to school-vaccination database'))
+.catch((err) => console.error('❌ MongoDB connection error:', err.message));
 
 // Routes
-app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/drives', driveRoutes);
-app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+
+// Root test route
+app.get('/', (req, res) => {
+  res.send('School Vaccination Backend is running...');
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!' });
+  res.status(500).json({ 
+    success: false,
+    message: 'Something went wrong!',
+    error: err.message 
+  });
 });
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/build')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
-  });
-}
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-}); 
+// Start server
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server is listening on http://localhost:${PORT}`);
+});

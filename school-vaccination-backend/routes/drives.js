@@ -6,8 +6,11 @@ const Drive = require("../models/VaccinationDrive");
 
 // ✅ New: GET today's drives
 router.get("/today", async (req, res) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // start of today (local)
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
 
   try {
     const drives = await Drive.find({
@@ -18,6 +21,7 @@ router.get("/today", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch today's drives" });
   }
 });
+
 router.get("/", async (req, res) => {
   const drives = await Drive.find();
   res.json(drives);
@@ -42,6 +46,44 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.put("/:id", async (req, res) => {
+  try {
+    const updated = await Drive.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: "Update failed" });
+  }
+});
+// PUT /api/drives/:id — update vaccination drive
+router.put("/:id", async (req, res) => {
+  try {
+    const { vaccine, date, totalDoses, applicableClasses } = req.body;
+
+    if (!vaccine || !date || !totalDoses || !applicableClasses) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const updated = await Drive.findByIdAndUpdate(
+      req.params.id,
+      {
+        vaccine,
+        date,
+        totalDoses,
+        applicableClasses
+      },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ error: "Drive not found" });
+    }
+
+    res.json(updated);
+  } catch (err) {
+    console.error("Error updating drive:", err.message);
+    res.status(500).json({ error: "Update failed" });
+  }
+});
 
 
 

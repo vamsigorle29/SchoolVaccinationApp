@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Calendar, Clock, MapPin, Users, AlertCircle, CheckCircle2 } from 'lucide-react';
-import API_ENDPOINTS from '../../config/api';
+import API_ENDPOINTS from '../config/api';
+
+// Configure axios defaults
+axios.defaults.headers.common['Content-Type'] = 'application/json';
+axios.defaults.headers.common['Accept'] = 'application/json';
 
 const VaccinationDrives = () => {
   const [drives, setDrives] = useState([]);
@@ -10,7 +14,7 @@ const VaccinationDrives = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    console.log('VaccinationDrives page mounted');
+    console.log('VaccinationDrives mounted');
     fetchDrives();
   }, []);
 
@@ -49,6 +53,11 @@ const VaccinationDrives = () => {
       setLoading(false);
     }
   };
+
+  // Debug render
+  console.log('Current drives state:', drives);
+  console.log('Loading state:', loading);
+  console.log('Error state:', error);
 
   const getStatusColor = (date) => {
     const today = new Date();
@@ -126,7 +135,7 @@ const VaccinationDrives = () => {
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">Vaccination Drives</h2>
         <button className="btn btn-primary flex items-center gap-2">
@@ -175,4 +184,4 @@ const VaccinationDrives = () => {
   );
 };
 
-export default VaccinationDrives;
+export default VaccinationDrives; 

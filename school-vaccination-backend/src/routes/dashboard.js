@@ -1,62 +1,77 @@
 const express = require("express");
 const router = express.Router();
 const Student = require("../models/Student");
-const Drive = require("../models/Drive");
+const Drive = require("../models/VaccinationDrive");
 
 // Get dashboard summary
 router.get("/summary", async (req, res) => {
   try {
     const totalStudents = await Student.countDocuments();
     const vaccinatedStudents = await Student.countDocuments({
-      vaccinationStatus: "fully-vaccinated",
+      vaccinationStatus: "Fully Vaccinated"
     });
-    const upcomingDrives = await Drive.countDocuments({
+    const partiallyVaccinated = await Student.countDocuments({
+      vaccinationStatus: "Partially Vaccinated"
+    });
+    const notVaccinated = await Student.countDocuments({
+      vaccinationStatus: "Not Vaccinated"
+    });
+
+    const upcomingDrives = await Drive.find({
       date: { $gte: new Date() },
-    });
-    const vaccinationRate = totalStudents > 0 ? (vaccinatedStudents / totalStudents) * 100 : 0;
+      status: "scheduled"
+    }).sort({ date: 1 });
 
     res.json({
       success: true,
       data: {
         totalStudents,
-        vaccinatedStudents,
-        upcomingDrives,
-        vaccinationRate: Math.round(vaccinationRate * 100) / 100
+        vaccinationStats: {
+          fullyVaccinated: vaccinatedStudents,
+          partiallyVaccinated,
+          notVaccinated
+        },
+        upcomingDrives
       }
     });
   } catch (error) {
     console.error("Error fetching dashboard summary:", error);
     res.status(500).json({
       success: false,
-      message: "Server error"
+      message: error.message
     });
   }
 });
 
-// Get today's drives
-router.get("/today-drives", async (req, res) => {
+// Get grade-wise statistics
+router.get("/grade-stats", async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const students = await Student.find();
+    const gradeStats = {};
 
-    const drives = await Drive.find({
-      date: {
-        $gte: today,
-        $lt: tomorrow,
-      },
-    }).populate("students");
+    students.forEach(student => {
+      if (!gradeStats[student.grade]) {
+        gradeStats[student.grade] = {
+          total: 0,
+          fullyVaccinated: 0,
+          partiallyVaccinated: 0,
+          notVaccinated: 0
+        };
+      }
+
+      gradeStats[student.grade].total++;
+      gradeStats[student.grade][student.vaccinationStatus.toLowerCase().replace(' ', '')]++;
+    });
 
     res.json({
       success: true,
-      data: drives
+      data: gradeStats
     });
   } catch (error) {
-    console.error("Error fetching today's drives:", error);
+    console.error("Error fetching grade stats:", error);
     res.status(500).json({
       success: false,
-      message: "Server error"
+      message: error.message
     });
   }
 });

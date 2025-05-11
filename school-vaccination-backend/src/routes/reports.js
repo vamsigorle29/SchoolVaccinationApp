@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Student = require('../models/Student');
-const Drive = require('../models/Drive');
+const Drive = require('../models/VaccinationDrive');
 const { auth } = require('../middleware/auth');
 
 // Get overall vaccination statistics

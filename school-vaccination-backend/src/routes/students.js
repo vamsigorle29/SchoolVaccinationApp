@@ -1,218 +1,161 @@
+const Student = require('../models/Student');
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const csv = require('csv-parse');
-const { body, validationResult } = require('express-validator');
-const Student = require('../models/Student');
-const { auth } = require('../middleware/auth');
+const mongoose = require('mongoose');
 
-// Configure multer for CSV upload
-const upload = multer({
-  storage: multer.memoryStorage(),
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'text/csv') {
-      cb(null, true);
-    } else {
-      cb(new Error('Only CSV files are allowed'));
+// Get all students
+router.get("/", async (req, res) => {
+  const students = await Student.find();
+  res.json(students);
+});
+
+// Get single student
+router.get("/:id", async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
     }
+    res.json(student);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Get all students with pagination and filters
-router.get('/', auth, async (req, res) => {
+// Create new student
+router.post("/", async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const search = req.query.search || '';
-    const classFilter = req.query.class || '';
-    const vaccinationStatus = req.query.vaccinationStatus || '';
+    const newStudent = new Student(req.body);
+    const saved = await newStudent.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    console.error("❌ Failed to save student:", err.message);
+    res.status(400).json({ error: err.message });
+  }
+});
 
-    const query = {};
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { studentId: { $regex: search, $options: 'i' } }
-      ];
+// Get enriched student data
+router.get("/v2", async (req, res) => {
+  try {
+    const students = await Student.find();
+
+    const enriched = students.map((s) => ({
+      _id: s._id,
+      rollNumber: s.rollNumber,
+      name: s.name,
+      class: s.class,
+      vaccinations: s.vaccinations,
+      vaccinesTaken: s.vaccinations.map((v) => v.vaccine),
+    }));
+
+    res.json(enriched);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch students v2" });
+  }
+});
+
+// Bulk insert students
+router.post("/bulk", async (req, res) => {
+  try {
+    const students = req.body;
+    if (!Array.isArray(students)) {
+      return res.status(400).json({ error: "Expected an array of students" });
     }
-    if (classFilter) {
-      query.class = classFilter;
+
+    const result = await Student.insertMany(students, { ordered: false });
+    res.status(201).json({ inserted: result.length });
+  } catch (err) {
+    console.error("❌ Bulk insert error:", err.message);
+    res.status(500).json({ error: "Bulk insert failed", details: err.message });
+  }
+});
+
+// Update student
+router.patch("/:id", async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    console.log("🔍 Attempting to update student with ID:", studentId);
+    console.log("📝 Update data:", req.body);
+
+    // First find the student to ensure it exists
+    const existingStudent = await Student.findById(studentId);
+    if (!existingStudent) {
+      console.log("❌ Student not found with ID:", studentId);
+      return res.status(404).json({
+        success: false,
+        error: "Student not found"
+      });
     }
-    if (vaccinationStatus) {
-      query['vaccinations.status'] = vaccinationStatus;
-    }
 
-    const students = await Student.find(query)
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .sort({ createdAt: -1 });
+    // Prepare update data with only the fields that are provided
+    const updateData = {};
+    const allowedFields = ['name', 'class', 'dateOfBirth', 'gender', 'parentName', 'contactNumber', 'vaccinationStatus', 'vaccinationHistory'];
+    
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    });
 
-    const total = await Student.countDocuments(query);
+    // Add updatedAt timestamp
+    updateData.updatedAt = new Date();
 
+    // Update the student
+    const updatedStudent = await Student.findByIdAndUpdate(
+      studentId,
+      { $set: updateData },
+      { 
+        new: true,
+        runValidators: true,
+        context: 'query'
+      }
+    );
+
+    console.log("✅ Student updated successfully:", updatedStudent);
     res.json({
       success: true,
-      data: students,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
+      message: "Student updated successfully",
+      data: updatedStudent
     });
-  } catch (error) {
+  } catch (err) {
+    console.error("❌ Update error:", err.message);
+    // Handle validation errors
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        error: "Validation failed",
+        details: Object.values(err.errors).map(e => e.message)
+      });
+    }
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      error: "Update failed",
+      details: err.message
     });
   }
 });
 
-// Add a single student
-router.post('/', auth, [
-  body('studentId').trim().notEmpty().withMessage('Student ID is required'),
-  body('name').trim().notEmpty().withMessage('Name is required'),
-  body('class').trim().notEmpty().withMessage('Class is required'),
-  body('dateOfBirth').isISO8601().withMessage('Valid date of birth is required'),
-  body('gender').isIn(['male', 'female', 'other']).withMessage('Valid gender is required'),
-  body('parentName').trim().notEmpty().withMessage('Parent name is required'),
-  body('contactNumber').trim().notEmpty().withMessage('Contact number is required')
-], async (req, res) => {
+// Delete student
+router.delete("/:id", async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array()
-      });
-    }
-
-    const existingStudent = await Student.findOne({ studentId: req.body.studentId });
-    if (existingStudent) {
-      return res.status(400).json({
-        success: false,
-        message: 'Student ID already exists'
-      });
-    }
-
-    const student = new Student(req.body);
-    await student.save();
-
-    res.status(201).json({
-      success: true,
-      data: student
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-});
-
-// Bulk import students from CSV
-router.post('/bulk-import', auth, upload.single('file'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'No file uploaded'
-      });
-    }
-
-    const records = [];
-    const parser = csv.parse({
-      columns: true,
-      skip_empty_lines: true
-    });
-
-    parser.on('readable', function() {
-      let record;
-      while ((record = parser.read()) !== null) {
-        records.push(record);
-      }
-    });
-
-    parser.on('error', function(err) {
-      return res.status(400).json({
-        success: false,
-        message: 'Error parsing CSV file'
-      });
-    });
-
-    parser.on('end', async function() {
-      try {
-        const students = await Student.insertMany(records, { ordered: false });
-        res.status(201).json({
-          success: true,
-          message: `${students.length} students imported successfully`
-        });
-      } catch (error) {
-        res.status(400).json({
-          success: false,
-          message: 'Error importing students',
-          error: error.message
-        });
-      }
-    });
-
-    parser.write(req.file.buffer);
-    parser.end();
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-});
-
-// Update student vaccination status
-router.patch('/:id/vaccination', auth, [
-  body('vaccineName').trim().notEmpty().withMessage('Vaccine name is required'),
-  body('date').isISO8601().withMessage('Valid date is required'),
-  body('driveId').isMongoId().withMessage('Valid drive ID is required'),
-  body('status').isIn(['scheduled', 'completed', 'missed']).withMessage('Valid status is required')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array()
-      });
-    }
-
-    const student = await Student.findById(req.params.id);
+    const student = await Student.findByIdAndDelete(req.params.id);
     if (!student) {
       return res.status(404).json({
         success: false,
         message: 'Student not found'
       });
     }
-
-    // Check if student is already vaccinated for this vaccine
-    const existingVaccination = student.vaccinations.find(
-      v => v.vaccineName === req.body.vaccineName && v.status === 'completed'
-    );
-
-    if (existingVaccination) {
-      return res.status(400).json({
-        success: false,
-        message: 'Student already vaccinated with this vaccine'
-      });
-    }
-
-    student.vaccinations.push(req.body);
-    await student.save();
-
     res.json({
       success: true,
-      data: student
+      message: 'Student deleted successfully'
     });
-  } catch (error) {
+  } catch (err) {
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Delete failed',
+      error: err.message
     });
   }
 });
 
-module.exports = router; 
+module.exports = router;

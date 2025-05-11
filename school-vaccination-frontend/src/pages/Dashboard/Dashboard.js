@@ -15,31 +15,40 @@ import {
   Activity
 } from "lucide-react";
 import API_ENDPOINTS from "../../config/api";
+import VaccinationDrives from "../../components/VaccinationDrives";
 
 const Dashboard = () => {
   const [summary, setSummary] = useState({
     totalStudents: 0,
-    vaccinated: 0,
-    unvaccinated: 0,
-    upcomingDrives: 0,
+    vaccinationStats: {
+      fullyVaccinated: 0,
+      partiallyVaccinated: 0,
+      notVaccinated: 0
+    }
   });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
+    console.log('Dashboard mounted');
     fetchDashboardData();
   }, []);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      console.log('Fetching dashboard data...');
       const response = await axios.get(API_ENDPOINTS.DASHBOARD.SUMMARY);
-      const data = response.data;
+      console.log('Dashboard API Response:', response.data);
+      
+      const data = response.data.data;
       setSummary({
         totalStudents: data.totalStudents || 0,
-        vaccinated: data.vaccinated || 0,
-        unvaccinated: data.unvaccinated || 0,
-        upcomingDrives: data.upcomingDrives || 0,
+        vaccinationStats: data.vaccinationStats || {
+          fullyVaccinated: 0,
+          partiallyVaccinated: 0,
+          notVaccinated: 0
+        }
       });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -60,8 +69,8 @@ const Dashboard = () => {
       trendUp: true
     },
     {
-      title: "Vaccinated Students",
-      value: summary.vaccinated,
+      title: "Fully Vaccinated",
+      value: summary.vaccinationStats.fullyVaccinated,
       icon: Syringe,
       color: "text-green-500",
       bgColor: "bg-green-50",
@@ -69,29 +78,23 @@ const Dashboard = () => {
       trendUp: true
     },
     {
-      title: "Unvaccinated Students",
-      value: summary.unvaccinated,
+      title: "Partially Vaccinated",
+      value: summary.vaccinationStats.partiallyVaccinated,
+      icon: Syringe,
+      color: "text-yellow-500",
+      bgColor: "bg-yellow-50",
+      trend: "+5%",
+      trendUp: true
+    },
+    {
+      title: "Not Vaccinated",
+      value: summary.vaccinationStats.notVaccinated,
       icon: Users,
       color: "text-red-500",
       bgColor: "bg-red-50",
       trend: "-5%",
       trendUp: false
     },
-    {
-      title: "Upcoming Drives",
-      value: summary.upcomingDrives,
-      icon: Calendar,
-      color: "text-purple-500",
-      bgColor: "bg-purple-50",
-      trend: "+3",
-      trendUp: true
-    },
-  ];
-
-  const recentActivities = [
-    { type: 'vaccination', status: 'completed', message: 'COVID-19 vaccination completed for Class 10A', time: '2 hours ago' },
-    { type: 'drive', status: 'scheduled', message: 'New vaccination drive scheduled for next week', time: '4 hours ago' },
-    { type: 'student', status: 'added', message: 'New student records added', time: '1 day ago' },
   ];
 
   if (loading) {
@@ -151,132 +154,9 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Vaccination Progress */}
-        <div className="lg:col-span-2 glass-card p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-800">Vaccination Progress</h2>
-            <div className="flex gap-2">
-              <button 
-                className={`px-3 py-1 rounded-full text-sm ${activeTab === 'overview' ? 'bg-primary text-white' : 'bg-gray-100'}`}
-                onClick={() => setActiveTab('overview')}
-              >
-                Overview
-              </button>
-              <button 
-                className={`px-3 py-1 rounded-full text-sm ${activeTab === 'details' ? 'bg-primary text-white' : 'bg-gray-100'}`}
-                onClick={() => setActiveTab('details')}
-              >
-                Details
-              </button>
-            </div>
-          </div>
-          
-          <div className="space-y-6">
-            <div className="relative pt-1">
-              <div className="flex mb-2 items-center justify-between">
-                <div>
-                  <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-primary bg-primary/10">
-                    Progress
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-semibold inline-block text-primary">
-                    {Math.round((summary.vaccinated / summary.totalStudents) * 100)}%
-                  </span>
-                </div>
-              </div>
-              <div className="overflow-hidden h-2 mb-4 text-xs flex rounded-full bg-gray-200">
-                <div
-                  style={{ width: `${(summary.vaccinated / summary.totalStudents) * 100}%` }}
-                  className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-primary to-secondary transition-all duration-500"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="glass-card p-4 bg-green-50">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  <span className="font-medium">Vaccinated</span>
-                </div>
-                <p className="text-2xl font-bold mt-2 text-green-600">{summary.vaccinated}</p>
-              </div>
-              <div className="glass-card p-4 bg-red-50">
-                <div className="flex items-center gap-2">
-                  <XCircle className="h-5 w-5 text-red-500" />
-                  <span className="font-medium">Unvaccinated</span>
-                </div>
-                <p className="text-2xl font-bold mt-2 text-red-600">{summary.unvaccinated}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="glass-card p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Recent Activity</h2>
-          <div className="space-y-4">
-            {recentActivities.map((activity, index) => (
-              <div key={index} className="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                  activity.status === 'completed' ? 'bg-green-100' :
-                  activity.status === 'scheduled' ? 'bg-blue-100' :
-                  'bg-purple-100'
-                }`}>
-                  {activity.status === 'completed' ? <CheckCircle2 className="h-4 w-4 text-green-500" /> :
-                   activity.status === 'scheduled' ? <Calendar className="h-4 w-4 text-blue-500" /> :
-                   <Users className="h-4 w-4 text-purple-500" />}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-800">{activity.message}</p>
-                  <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <button className="w-full mt-4 text-sm text-primary hover:text-primary-dark font-medium flex items-center justify-center gap-2">
-            View All Activity
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Upcoming Drives */}
-      <div className="glass-card p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-800">Upcoming Vaccination Drives</h2>
-          <button className="text-sm text-primary hover:text-primary-dark font-medium flex items-center gap-2">
-            View All
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(3)].map((_, index) => (
-            <div key={index} className="glass-card p-4 hover:shadow-lg transition-all duration-300">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Activity className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-800">COVID-19 Vaccination</h3>
-                  <p className="text-sm text-gray-500">Class {['10A', '10B', '11A'][index]}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  <span>Mar {15 + index}, 2024</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  <span>9:00 AM</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* Vaccination Drives Section */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <VaccinationDrives key="vaccination-drives" />
       </div>
     </div>
   );
